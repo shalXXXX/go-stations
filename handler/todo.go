@@ -2,6 +2,9 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
+	"log"
+	"net/http"
 
 	"github.com/TechBowl-japan/go-stations/model"
 	"github.com/TechBowl-japan/go-stations/service"
@@ -41,4 +44,38 @@ func (h *TODOHandler) Update(ctx context.Context, req *model.UpdateTODORequest) 
 func (h *TODOHandler) Delete(ctx context.Context, req *model.DeleteTODORequest) (*model.DeleteTODOResponse, error) {
 	_ = h.svc.DeleteTODO(ctx, nil)
 	return &model.DeleteTODOResponse{}, nil
+}
+
+func (h *TODOHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	req := model.CreateTODORequest{}
+	if r.Method == http.MethodPost {
+
+		err := json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
+			http.Error(w, "Bad Request", http.StatusBadRequest)
+			return
+		}
+
+		if req.Subject == "" {
+			http.Error(w, "Bad Request", http.StatusBadRequest)
+			return
+		}
+	}
+	ctx := r.Context()
+	todo, err := h.svc.CreateTODO(ctx, req.Subject, req.Description)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	res := model.CreateTODOResponse{
+		TODO: *todo,
+	}
+
+	err = json.NewEncoder(w).Encode(res)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 }
